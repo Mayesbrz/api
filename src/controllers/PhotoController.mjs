@@ -1,19 +1,27 @@
 import PhotoModel from '../models/Photo.mjs';
-import AlbumModel from '../models/Album.mjs';
+import AlbumModel from '../models/album.mjs';
+import authMiddleware from '../middlewares/auth.mjs';
+import validator from 'better-validator';
+
+const validatePhoto = (data) => {
+  const v = new validator();
+  v(data).required().object();
+  v(data.title).required().string().minLength(2);
+  v(data.url).required().string().minLength(5);
+  v(data.description).optional().string();
+  return v.run();
+};
 
 const Photos = class Photos {
   constructor(app, connect) {
     this.app = app;
     this.PhotoModel = connect.model('Photo', PhotoModel);
     this.AlbumModel = connect.model('Album', AlbumModel);
-    this.PhotoModel = PhotoModel;
-    this.AlbumModel = AlbumModel;
-
     this.run();
   }
 
   create() {
-    this.app.post('/album/:idalbum/photo', async (req, res) => {
+    this.app.post('/album/:idalbum/photo', authMiddleware, async (req, res) => {
       const photo = new this.PhotoModel({
         ...req.body,
         album: req.params.idalbum
@@ -32,7 +40,7 @@ const Photos = class Photos {
   }
 
   getAllFromAlbum() {
-    this.app.get('/album/:idalbum/photos', (req, res) => {
+    this.app.get('/album/:idalbum/photos', authMiddleware, (req, res) => {
       this.PhotoModel.find({ album: req.params.idalbum })
         .populate('album')
         .then((photos) => res.status(200).json(photos))
@@ -41,7 +49,7 @@ const Photos = class Photos {
   }
 
   getByIdFromAlbum() {
-    this.app.get('/album/:idalbum/photo/:idphotos', (req, res) => {
+    this.app.get('/album/:idalbum/photo/:idphotos', authMiddleware, (req, res) => {
       this.PhotoModel.findOne({ _id: req.params.idphotos, album: req.params.idalbum })
         .populate('album')
         .then((foundPhoto) => {
@@ -55,7 +63,12 @@ const Photos = class Photos {
   }
 
   updateById() {
-    this.app.put('/album/:idalbum/photo/:idphotos', (req, res) => {
+    this.app.put('/album/:idalbum/photo/:idphotos', authMiddleware, (req, res) => {
+      const errors = validatePhoto(req.body);
+      if (errors.length) {
+        return res.status(400).json({ code: 400, message: 'Validation failed', errors });
+      }
+
       this.PhotoModel.findByIdAndUpdate(req.params.idphotos, req.body, { new: true })
         .then((updatedPhoto) => {
           if (!updatedPhoto) {
@@ -68,7 +81,7 @@ const Photos = class Photos {
   }
 
   deleteById() {
-    this.app.delete('/album/:idalbum/photo/:idphotos', async (req, res) => {
+    this.app.delete('/album/:idalbum/photo/:idphotos', authMiddleware, async (req, res) => {
       this.PhotoModel.findByIdAndDelete(req.params.idphotos)
         .then(async (deletedPhoto) => {
           if (!deletedPhoto) {

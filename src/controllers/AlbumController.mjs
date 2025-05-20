@@ -1,5 +1,15 @@
 import mongoose from 'mongoose';
 import Album from '../models/album.mjs';
+import authMiddleware from '../middlewares/auth.mjs';
+import validator from 'better-validator';
+
+const validateAlbum = (data) => {
+  const v = new validator();
+  v(data).required().object();
+  v(data.title).required().string().minLength(2);
+  v(data.description).optional().string();
+  return v.run();
+};
 
 const Albums = class Albums {
   constructor(app, connect) {
@@ -9,7 +19,7 @@ const Albums = class Albums {
   }
 
   create() {
-    this.app.post('/album', (req, res) => {
+    this.app.post('/album', authMiddleware, (req, res) => {
       const album = new this.Album(req.body);
       return album.save()
         .then((savedAlbum) => res.status(201).json(savedAlbum))
@@ -18,7 +28,7 @@ const Albums = class Albums {
   }
 
   getAll() {
-    this.app.get('/albums', (req, res) => {
+    this.app.get('/albums', authMiddleware, (req, res) => {
       const filter = req.query.title ? { title: new RegExp(req.query.title, 'i') } : {};
       return this.Album.find(filter)
         .populate('photos')
@@ -28,14 +38,12 @@ const Albums = class Albums {
   }
 
   showById() {
-    this.app.get('/album/:id', (req, res) => {
+    this.app.get('/album/:id', authMiddleware, (req, res) => {
       const { id } = req.params;
 
       if (!mongoose.Types.ObjectId.isValid(id)) {
         return res.status(400).json({ code: 400, message: 'Invalid Album ID format' });
       }
-
-      console.log(`Recherche de l'album avec ID : ${id}`);
 
       return this.Album.findById(id)
         .populate('photos')
@@ -50,7 +58,12 @@ const Albums = class Albums {
   }
 
   updateById() {
-    this.app.put('/album/:id', (req, res) => {
+    this.app.put('/album/:id', authMiddleware, (req, res) => {
+      const errors = validateAlbum(req.body);
+      if (errors.length) {
+        return res.status(400).json({ code: 400, message: 'Validation failed', errors });
+      }
+
       const { id } = req.params;
 
       if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -69,7 +82,7 @@ const Albums = class Albums {
   }
 
   deleteById() {
-    this.app.delete('/album/:id', (req, res) => {
+    this.app.delete('/album/:id', authMiddleware, (req, res) => {
       const { id } = req.params;
 
       if (!mongoose.Types.ObjectId.isValid(id)) {
