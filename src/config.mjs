@@ -1,12 +1,10 @@
-export default {
-  development: {
-    type: 'development',
-    port: 3000,
-    mongodb: 'mongodb+srv://amayas:amayas@efrei.fl8c5.mongodb.net/'
-  },
-  production: {
-    type: 'production',
-    port: 3000,
-    mongodb: 'mongodb+srv://amayas:amayas@efrei.fl8c5.mongodb.net/'
-  }
+import dotenv from 'dotenv';
+dotenv.config();
+
+
+
+export const headers = {
+  'X-Api-Key': process.env.RANDOMMER_API_KEY
 };
+
+export const randommerBase = 'https://randommer.io/api';
